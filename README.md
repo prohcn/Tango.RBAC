@@ -1,7 +1,7 @@
 
 # Tango.RBAC
 
-**Tango.RBAC** is a modular, extensible Role-Based Access Control (RBAC) system built for .NET 8. It supports user/role/permission relationships with overrides, effective dates, and auditing — making it ideal for enterprise-grade authorization.
+**Tango.RBAC** is a modular, extensible Role-Based Access Control (RBAC) system built for .NET 8. It supports user/role/permission relationships with overrides, effective dates, and auditing.
 
 ---
 
@@ -43,7 +43,7 @@ Update the connection string in `appsettings.Development.json` of `RbacDemoApp`:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=TangoRbacDb;Trusted_Connection=True;TrustServerCertificate=True;"
+    "DefaultConnection": "Server=localhost;Database={EnterDBHere};Trusted_Connection=True;TrustServerCertificate=True;"
   }
 }
 ```
@@ -87,26 +87,4 @@ The following endpoints are available via `IAuthorizationService` in `RbacDemoAp
 
 ## 🧪 Seeding Test Data
 
-Modify or call the `RbacSeeder.InitializeAsync()` method in `Program.cs` of `RbacDemoApp` to add test users, roles, and permissions.
-
----
-
-## 🤝 Contributing
-
-1. Fork the repo
-2. Create your feature branch (`git checkout -b feature/MyFeature`)
-3. Commit changes (`git commit -am 'Add feature'`)
-4. Push to the branch (`git push origin feature/MyFeature`)
-5. Open a pull request
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
-## 📬 Contact
-
-For feedback, issues, or contributions, open an issue or pull request on GitHub.
+Modify or call the `RbacTestData.SeedTestDataAsync(RbacDbContext)` method in `Program.cs` of `RbacDemoApp` to add test users, roles, and permissions.
