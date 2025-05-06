@@ -1,0 +1,59 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+## Ignore Visual Studio folder
+.vs/
+
+## Ignore build outputs
+bin/
+obj/
+out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Rider & VS Code
+.idea/
+.vscode/
+.vscode/*
+
+## Logs
+*.log
+
+## OS files
+.DS_Store
+Thumbs.db
+
+## ASP.NET & EF
+appsettings.*.json
+appsettings.Local.json
+appsettings.Development.json
+secrets.json
+
+## EF Migrations (optional)
+#migrations/
+
+## dotnet tools
+*.dbmdl
+*.bak
+*.sql
+*.sqlite
+*.mdf
+
+## Publish output
+publish/
+*.publish.xml
+
+## Test results
+TestResults/
+*.trx
+*.coverage
+*.testsettings
+*.vsmdi
+
+## Others
+node_modules/
+.env
+*.nupkg
+*.snupkg
