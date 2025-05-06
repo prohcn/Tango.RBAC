@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Tango.RBAC.Models;
+using Tango.RBAC.RbacServicePackage.Models;
 using Tango.RBAC.RbacServicePackage.Data;
 using Tango.RBAC.RbacServicePackage.Interfaces;
 
@@ -16,6 +16,13 @@ namespace Tango.RBAC.Services
 
         public async Task<bool> HasPermissionAsync(int userId, string area, string name)
         {
+            var user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+
+            if (user == null || !user.IsActive)
+                return false;
+
             var userPermissions = await _context.UserPermissions
                 .Where(up => up.UserId == userId)
                 .ToListAsync();
@@ -254,6 +261,18 @@ namespace Tango.RBAC.Services
         public async Task<Permission?> GetPermissionByIdAsync(int id)
         {
             return await _context.Permissions.FindAsync(id);
+        }
+
+        public async Task RemoveUserPermissionOverrideAsync(int userId, int permissionId)
+        {
+            var existing = await _context.UserPermissions
+                .FirstOrDefaultAsync(up => up.UserId == userId && up.PermissionId == permissionId);
+
+            if (existing != null)
+            {
+                _context.UserPermissions.Remove(existing);
+                await _context.SaveChangesAsync();
+            }
         }
     }
 }

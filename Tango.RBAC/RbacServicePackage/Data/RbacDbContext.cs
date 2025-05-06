@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Tango.RBAC.Models;
+using Tango.RBAC.RbacServicePackage.Models;
 
 namespace Tango.RBAC.RbacServicePackage.Data
 {

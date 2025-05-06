@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Tango.RBAC.Models;
+using Tango.RBAC.RbacServicePackage.Models;
 
 namespace Tango.RBAC.RbacServicePackage.Interfaces
 {
@@ -35,5 +35,6 @@ namespace Tango.RBAC.RbacServicePackage.Interfaces
         Task<User?> GetUserByIdAsync(int id);
         Task<Role?> GetRoleByIdAsync(int id);
         Task<Permission?> GetPermissionByIdAsync(int id);
+        Task RemoveUserPermissionOverrideAsync(int userId, int permissionId);
     }
 }

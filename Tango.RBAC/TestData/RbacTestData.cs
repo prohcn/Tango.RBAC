@@ -1,4 +1,4 @@
-﻿using Tango.RBAC.Models;
+﻿using Tango.RBAC.RbacServicePackage.Models;
 using Tango.RBAC.RbacServicePackage.Data;
 using Microsoft.EntityFrameworkCore;
 

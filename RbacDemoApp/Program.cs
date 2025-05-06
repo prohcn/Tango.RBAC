@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Tango.RBAC.RbacServicePackage.Data;
-using Tango.RBAC.Models;
 using Tango.RBAC.RbacServicePackage.Interfaces;
 using Tango.RBAC.TestData;
 using Microsoft.AspNetCore.Builder;
@@ -9,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
 using System;
 using Microsoft.Extensions.Configuration;
+using Tango.RBAC.RbacServicePackage.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -214,5 +214,13 @@ app.MapPost("/users/{userId}/permissions/{permissionId}/deny", async (int userId
 })
 .WithName("DenyPermissionToUser")
 .WithSummary("Deny's a permission to a user");
+
+app.MapDelete("/users/{userId}/permissions/{permissionId}/delete", async (int userId, int permissionId, IAuthorizationService service) =>
+{
+    await service.RemoveUserPermissionOverrideAsync(userId, permissionId);
+    return Results.Ok();
+})
+.WithName("DeleteExistingPermissionToUser")
+.WithSummary("Deletes an existing permission to a user");
 
 app.Run();

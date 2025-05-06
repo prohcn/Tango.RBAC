@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Tango.RBAC.Models
+namespace Tango.RBAC.RbacServicePackage.Models
 {
     [Table("User", Schema = "dbo")]
     public class User
