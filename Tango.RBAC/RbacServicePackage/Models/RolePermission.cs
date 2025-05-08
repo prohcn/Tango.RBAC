@@ -2,7 +2,7 @@
 
 namespace Tango.RBAC.RbacServicePackage.Models
 {
-    [Table("RolePermission", Schema = "dbo")]
+    [Table("RolePermission", Schema = "dbo.rbac")]
     public class RolePermission
     {
         public int RolePermissionId { get; set; }

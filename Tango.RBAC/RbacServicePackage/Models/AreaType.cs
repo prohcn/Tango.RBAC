@@ -2,16 +2,13 @@
 
 namespace Tango.RBAC.RbacServicePackage.Models
 {
-    [Table("Permission", Schema = "dbo.rbac")]
-    public class Permission
+    [Table("AreaType", Schema = "dbo.rbac")]
+    public class AreaType
     {
-        public int PermissionId { get; set; }
         public int AreaTypeId { get; set; }
-        public int PermissionTypeId { get; set; }
-        public string? Instance { get; set; }
+        public required string AreaTypeName { get; set; }
         public DateTime DateCreated { get; set; }
         public string? UserCreated { get; set; }
         public DateTime? DateUpdated { get; set; }
-        public string? UserUpdated { get; set; }
     }
 }

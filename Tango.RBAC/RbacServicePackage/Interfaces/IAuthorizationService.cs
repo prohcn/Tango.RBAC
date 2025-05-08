@@ -5,36 +5,38 @@ using System.Text;
 using System.Threading.Tasks;
 using Tango.RBAC.RbacServicePackage.Models;
 
+
 namespace Tango.RBAC.RbacServicePackage.Interfaces
 {
     public interface IAuthorizationService
     {
-        Task<bool> HasPermissionAsync(int userId, string area, string name);
+        // Permission checking
+        Task<bool> HasPermissionAsync(int userId, int areaTypeId, int permissionTypeId);
 
+        // CRUD: User
         Task<User> AddUserAsync(User user);
-        Task<Role> AddRoleAsync(Role role);
-        Task<Permission> AddPermissionAsync(Permission permission);
-
         Task<User> UpdateUserAsync(User user);
-        Task<Role> UpdateRoleAsync(Role role);
-        Task<Permission> UpdatePermissionAsync(Permission permission);
-
         Task DeleteUserAsync(int userId);
-        Task DeleteRoleAsync(int roleId);
-        Task DeletePermissionAsync(int permissionId);
-
+        Task<User?> GetUserByIdAsync(int id);
         Task AddUsersAsync(IEnumerable<User> users);
+
+        // CRUD: Role
+        Task<Role> AddRoleAsync(Role role);
+        Task<Role> UpdateRoleAsync(Role role);
+        Task DeleteRoleAsync(int roleId);
+        Task<Role?> GetRoleByIdAsync(int id);
         Task AddRolesAsync(IEnumerable<Role> roles);
+
+        // CRUD: Permission
+        Task<Permission> AddPermissionAsync(Permission permission);
+        Task<Permission> UpdatePermissionAsync(Permission permission);
+        Task DeletePermissionAsync(int permissionId);
+        Task<Permission?> GetPermissionByIdAsync(int id);
         Task AddPermissionsAsync(IEnumerable<Permission> permissions);
 
-        Task AssignRoleToUserAsync(int userId, int roleId, DateTime? effectiveFrom = null, DateTime? effectiveThrough = null);
-        Task AssignPermissionToRoleAsync(int roleId, int permissionId);
-        Task AssignPermissionToUserAsync(int userId, int permissionId, string overrideMode);
-        Task GrantPermissionToUserAsync(int userId, int permissionId);
-        Task DenyPermissionToUserAsync(int userId, int permissionId);
-        Task<User?> GetUserByIdAsync(int id);
-        Task<Role?> GetRoleByIdAsync(int id);
-        Task<Permission?> GetPermissionByIdAsync(int id);
-        Task RemoveUserPermissionOverrideAsync(int userId, int permissionId);
+        // Assignment
+        Task AssignRoleToUserAsync(int userId, int roleId, string user);
+        Task AssignPermissionToRoleAsync(int roleId, int permissionId, string user);
     }
 }
+

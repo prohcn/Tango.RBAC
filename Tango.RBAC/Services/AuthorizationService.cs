@@ -14,35 +14,28 @@ namespace Tango.RBAC.Services
             _context = context;
         }
 
-        public async Task<bool> HasPermissionAsync(int userId, string area, string name)
+        public async Task<bool> HasPermissionAsync(int userId, int areaTypeId, int permissionTypeId)
         {
-            var user = await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.UserId == userId);
+            // Step 1: Ensure the user exists and is active
+            var userIsActive = await _context.Users
+                .AnyAsync(u => u.UserId == userId && u.IsActive);
 
-            if (user == null || !user.IsActive)
+            if (!userIsActive)
                 return false;
 
-            var userPermissions = await _context.UserPermissions
-                .Where(up => up.UserId == userId)
-                .ToListAsync();
-
-            var overridePermission = userPermissions
-                .FirstOrDefault(up =>
-                    _context.Permissions.Any(p => p.PermissionId == up.PermissionId && p.Area == area && p.Name == name));
-
-            if (overridePermission != null)
-                return overridePermission.OverrideMode == "GRANT";
-
-            var roles = await _context.UserRoles
+            // Step 2–4: Traverse UserRoles → RolePermissions → Permissions and filter by criteria
+            var hasPermission = await _context.UserRoles
                 .Where(ur => ur.UserId == userId)
-                .Select(ur => ur.RoleId)
-                .ToListAsync();
+                .SelectMany(ur => _context.RolePermissions
+                    .Where(rp => rp.RoleId == ur.RoleId)
+                    .Select(rp => rp.PermissionId))
+                .Distinct()
+                .AnyAsync(pid => _context.Permissions.Any(p =>
+                    p.PermissionId == pid &&
+                    p.AreaTypeId == areaTypeId &&
+                    p.PermissionTypeId == permissionTypeId));
 
-            return await _context.RolePermissions
-                .Where(rp => roles.Contains(rp.RoleId))
-                .AnyAsync(rp =>
-                    _context.Permissions.Any(p => p.PermissionId == rp.PermissionId && p.Area == area && p.Name == name));
+            return hasPermission;
         }
 
         public async Task<User> AddUserAsync(User user)
@@ -126,9 +119,8 @@ namespace Tango.RBAC.Services
         public async Task AddUsersAsync(IEnumerable<User> users)
         {
             foreach (var user in users)
-            {
                 user.DateCreated = DateTime.UtcNow;
-            }
+
             _context.Users.AddRange(users);
             await _context.SaveChangesAsync();
         }
@@ -136,9 +128,8 @@ namespace Tango.RBAC.Services
         public async Task AddRolesAsync(IEnumerable<Role> roles)
         {
             foreach (var role in roles)
-            {
                 role.DateCreated = DateTime.UtcNow;
-            }
+
             _context.Roles.AddRange(roles);
             await _context.SaveChangesAsync();
         }
@@ -146,133 +137,49 @@ namespace Tango.RBAC.Services
         public async Task AddPermissionsAsync(IEnumerable<Permission> permissions)
         {
             foreach (var permission in permissions)
-            {
                 permission.DateCreated = DateTime.UtcNow;
-            }
+
             _context.Permissions.AddRange(permissions);
             await _context.SaveChangesAsync();
         }
 
-        public async Task AssignRoleToUserAsync(int userId, int roleId, DateTime? effectiveFrom = null, DateTime? effectiveThrough = null)
+        public async Task AssignRoleToUserAsync(int userId, int roleId, string user)
         {
             var exists = await _context.UserRoles.AnyAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
             if (!exists)
             {
-                _context.UserRoles.Add(new UserRole
+                var userRole = new UserRole
                 {
                     UserId = userId,
                     RoleId = roleId,
-                    EffectiveFrom = effectiveFrom,
-                    EffectiveThrough = effectiveThrough,
-                    DateCreated = DateTime.UtcNow
-                });
+                    DateCreated = DateTime.UtcNow, 
+                    UserCreated = user
+                };
+                _context.UserRoles.Add(userRole);
                 await _context.SaveChangesAsync();
             }
         }
 
-        public async Task AssignPermissionToRoleAsync(int roleId, int permissionId)
+        public async Task AssignPermissionToRoleAsync(int roleId, int permissionId, string user)
         {
             var exists = await _context.RolePermissions.AnyAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionId);
             if (!exists)
             {
-                _context.RolePermissions.Add(new RolePermission
+                var rolePermission = new RolePermission
                 {
                     RoleId = roleId,
                     PermissionId = permissionId,
-                    DateCreated = DateTime.UtcNow
-                });
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task GrantPermissionToUserAsync(int userId, int permissionId)
-        {
-            await AddOrUpdateUserPermissionAsync(userId, permissionId, "GRANT");
-        }
-
-        public async Task DenyPermissionToUserAsync(int userId, int permissionId)
-        {
-            await AddOrUpdateUserPermissionAsync(userId, permissionId, "DENY");
-        }
-
-        private async Task AddOrUpdateUserPermissionAsync(int userId, int permissionId, string mode)
-        {
-            var userPerm = await _context.UserPermissions.FirstOrDefaultAsync(up => up.UserId == userId && up.PermissionId == permissionId);
-            if (userPerm == null)
-            {
-                _context.UserPermissions.Add(new UserPermission
-                {
-                    UserId = userId,
-                    PermissionId = permissionId,
-                    OverrideMode = mode,
-                    DateCreated = DateTime.UtcNow
-                });
-            }
-            else
-            {
-                userPerm.OverrideMode = mode;
-                userPerm.DateUpdated = DateTime.UtcNow;
-                _context.UserPermissions.Update(userPerm);
-            }
-            await _context.SaveChangesAsync();
-        }
-        public async Task AssignPermissionToUserAsync(int userId, int permissionId, string overrideMode)
-        {
-            // Validate override mode
-            overrideMode = overrideMode.ToUpperInvariant();
-            if (overrideMode != "GRANT" && overrideMode != "DENY")
-                throw new ArgumentException("OverrideMode must be either 'GRANT' or 'DENY'.");
-
-            var existing = await _context.UserPermissions
-                .FirstOrDefaultAsync(up => up.UserId == userId && up.PermissionId == permissionId);
-
-            if (existing != null)
-            {
-                // Update existing override
-                existing.OverrideMode = overrideMode;
-                existing.DateUpdated = DateTime.UtcNow;
-            }
-            else
-            {
-                // Add new override
-                var userPermission = new UserPermission
-                {
-                    UserId = userId,
-                    PermissionId = permissionId,
-                    OverrideMode = overrideMode,
                     DateCreated = DateTime.UtcNow,
-                    UserCreated = "System"
+                    UserCreated = user
                 };
-                _context.UserPermissions.Add(userPermission);
-            }
-
-            await _context.SaveChangesAsync();
-        }
-        public async Task<User?> GetUserByIdAsync(int id)
-        {
-            return await _context.Users.FindAsync(id);
-        }
-
-        public async Task<Role?> GetRoleByIdAsync(int id)
-        {
-            return await _context.Roles.FindAsync(id);
-        }
-
-        public async Task<Permission?> GetPermissionByIdAsync(int id)
-        {
-            return await _context.Permissions.FindAsync(id);
-        }
-
-        public async Task RemoveUserPermissionOverrideAsync(int userId, int permissionId)
-        {
-            var existing = await _context.UserPermissions
-                .FirstOrDefaultAsync(up => up.UserId == userId && up.PermissionId == permissionId);
-
-            if (existing != null)
-            {
-                _context.UserPermissions.Remove(existing);
+                _context.RolePermissions.Add(rolePermission);
                 await _context.SaveChangesAsync();
             }
         }
+
+
+        public async Task<User?> GetUserByIdAsync(int id) => await _context.Users.FindAsync(id);
+        public async Task<Role?> GetRoleByIdAsync(int id) => await _context.Roles.FindAsync(id);
+        public async Task<Permission?> GetPermissionByIdAsync(int id) => await _context.Permissions.FindAsync(id);
     }
 }

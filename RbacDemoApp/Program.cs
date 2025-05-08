@@ -9,218 +9,155 @@ using System.Collections.Generic;
 using System;
 using Microsoft.Extensions.Configuration;
 using Tango.RBAC.RbacServicePackage.Models;
+using Microsoft.OpenApi.Models;
+using Tango.RBAC.Services;
+using Microsoft.AspNetCore.Mvc;
+using System.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
-
-// In-memory DB for demo purposes
+// Configure database
 builder.Services.AddDbContext<RbacDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add Swagger services
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-
-
 // Register services
-builder.Services.AddScoped<IAuthorizationService, Tango.RBAC.Services.AuthorizationService>();
+builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
+
 
 var app = builder.Build();
 
+// Use Swagger middleware
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "RBAC API V1");
+});
 
-// Seed test data
+// Apply migrations and seed test data
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<RbacDbContext>();
-    await db.Database.MigrateAsync(); // apply schema
-    await RbacTestData.SeedTestDataAsync(db);   // seed test data
+    await db.Database.MigrateAsync(); // Ensures tables are created
+    await RbacTestData.SeedTestDataAsync(db); // Optional: Seed initial data
 }
 
 // Default test endpoint
-app.MapGet("/", () => "Tango RBAC Demo App with demo data.");
+app.MapGet("/", () => "Tango RBAC Demo App running.")
+    .WithName("Default")
+    .WithSummary("Default health check endpoint")
+    .WithDescription("Returns a basic message to confirm the app is running.");
 
-// Get user by ID
-app.MapGet("/users/{id}", async (int id, IAuthorizationService service) =>
+app.MapPost("/assign-role", async (IAuthorizationService service, int userId, int roleId, string user) =>
 {
-    var user = await service.GetUserByIdAsync(id);
-    return user is not null ? Results.Ok(user) : Results.NotFound();
+    await service.AssignRoleToUserAsync(userId, roleId, user);
+    return Results.Ok("Role assigned to user.");
 })
-.WithName("GetUser")
-.WithSummary("Gets a user by id")
-.WithDescription("Gets existing user information by id");
+.WithName("AssignRoleToUser")
+.WithSummary("Assigns a role to a user")
+.WithDescription("Assigns the specified role to the given user.");
 
-// Get role by ID
-app.MapGet("/roles/{id}", async (int id, IAuthorizationService service) =>
+app.MapPost("/assign-permission", async (IAuthorizationService service, int roleId, int permissionId, string user) =>
 {
-    var role = await service.GetRoleByIdAsync(id);
-    return role is not null ? Results.Ok(role) : Results.NotFound();
+    await service.AssignPermissionToRoleAsync(roleId, permissionId, user);
+    return Results.Ok("Permission assigned to role.");
 })
-.WithName("GetRole")
-.WithSummary("Gets a role by id")
-.WithDescription("Gets existing role information by id");
+.WithName("AssignPermissionToRole")
+.WithSummary("Assigns a permission to a role")
+.WithDescription("Assigns the specified permission to the given role.");
 
-// Get permission by ID
-app.MapGet("/permissions/{id}", async (int id, IAuthorizationService service) =>
+app.MapGet("/has-permission", async (IAuthorizationService service, int userId, int areaTypeId, int permissionTypeId) =>
 {
-    var perm = await service.GetPermissionByIdAsync(id);
-    return perm is not null ? Results.Ok(perm) : Results.NotFound();
+    var result = await service.HasPermissionAsync(userId, areaTypeId, permissionTypeId);
+    return Results.Ok(result);
 })
-.WithName("GetPermission")
-.WithSummary("Gets a permission by id")
-.WithDescription("Gets existing permission information by id");
+.WithName("CheckUserPermission")
+.WithSummary("Checks if a user has a specific permission")
+.WithDescription("Verifies whether the user is in a role that has the specified permission.");
 
-// Assign role to user
-app.MapPost("/users/{userId}/roles/{roleId}", async (int userId, int roleId, IAuthorizationService service) =>
-{
-    await service.AssignRoleToUserAsync(userId, roleId);
-    return Results.Ok();
-})
-.WithName("PostRoleToUser")
-.WithSummary("Assigns Role to a User");
-
-// Assign permission to role
-app.MapPost("/roles/{roleId}/permissions/{permissionId}", async (int roleId, int permissionId, IAuthorizationService service) =>
-{
-    await service.AssignPermissionToRoleAsync(roleId, permissionId);
-    return Results.Ok();
-})
-.WithName("PostPermissionToRole")
-.WithSummary("Assigns Permission to a Role");
-
-// Assign permission to user (override)
-app.MapPost("/users/{userId}/permissions/{permissionId}", async (int userId, int permissionId, string overrideMode, IAuthorizationService service) =>
-{
-    await service.AssignPermissionToUserAsync(userId, permissionId, overrideMode);
-    return Results.Ok();
-})
-.WithName("PostPermissionToUser")
-.WithSummary("Assigns Permission to a User");
-// === IAuthorizationService Endpoints ===
-
-app.MapGet("/check-permission", async (int userId, string area, string name, IAuthorizationService service) =>
-{
-    bool hasPermission = await service.HasPermissionAsync(userId, area, name);
-    return Results.Ok(new { userId, area, name, hasPermission });
-})
-.WithName("UserPermissionCheck")
-.WithSummary("Checks a users permission for a specific area and name");
-
-app.MapPost("/users", async (User user, IAuthorizationService service) =>
+app.MapPost("/add-user", async (IAuthorizationService service, User user) =>
 {
     var result = await service.AddUserAsync(user);
     return Results.Created($"/users/{result.UserId}", result);
 })
 .WithName("AddUser")
-.WithSummary("Adds a new user");
+.WithSummary("Adds a new user")
+.WithDescription("Creates and returns a new user.");
 
-app.MapPost("/roles", async (Role role, IAuthorizationService service) =>
+app.MapPost("/add-role", async (IAuthorizationService service, Role role) =>
 {
     var result = await service.AddRoleAsync(role);
     return Results.Created($"/roles/{result.RoleId}", result);
 })
 .WithName("AddRole")
-.WithSummary("Adds a new role");
+.WithSummary("Adds a new role")
+.WithDescription("Creates and returns a new role.");
 
-app.MapPost("/permissions", async (Permission permission, IAuthorizationService service) =>
+app.MapPost("/add-permission", async (IAuthorizationService service, Permission permission) =>
 {
     var result = await service.AddPermissionAsync(permission);
     return Results.Created($"/permissions/{result.PermissionId}", result);
 })
 .WithName("AddPermission")
-.WithSummary("Adds a new permission");
+.WithSummary("Adds a new permission")
+.WithDescription("Creates and returns a new permission.");
 
-app.MapPut("/users", async (User user, IAuthorizationService service) =>
+app.MapGet("/user/{id}", async (IAuthorizationService service, int id) =>
 {
-    var result = await service.UpdateUserAsync(user);
-    return Results.Ok(result);
+    var user = await service.GetUserByIdAsync(id);
+    return user is not null ? Results.Ok(user) : Results.NotFound();
 })
-.WithName("UpdateUser")
-.WithSummary("Updates a user");
+.WithName("GetUserById")
+.WithSummary("Gets a user by ID")
+.WithDescription("Fetches and returns a user with the specified ID.");
 
-app.MapPut("/roles", async (Role role, IAuthorizationService service) =>
+app.MapGet("/role/{id}", async (IAuthorizationService service, int id) =>
 {
-    var result = await service.UpdateRoleAsync(role);
-    return Results.Ok(result);
+    var role = await service.GetRoleByIdAsync(id);
+    return role is not null ? Results.Ok(role) : Results.NotFound();
 })
-.WithName("UpdateRole")
-.WithSummary("Updates a role");
+.WithName("GetRoleById")
+.WithSummary("Gets a role by ID")
+.WithDescription("Fetches and returns a role with the specified ID.");
 
-app.MapPut("/permissions", async (Permission permission, IAuthorizationService service) =>
+app.MapGet("/permission/{id}", async (IAuthorizationService service, int id) =>
 {
-    var result = await service.UpdatePermissionAsync(permission);
-    return Results.Ok(result);
+    var permission = await service.GetPermissionByIdAsync(id);
+    return permission is not null ? Results.Ok(permission) : Results.NotFound();
 })
-.WithName("UpdatePermission")
-.WithSummary("Updates a permission");
+.WithName("GetPermissionById")
+.WithSummary("Gets a permission by ID")
+.WithDescription("Fetches and returns a permission with the specified ID.");
 
-app.MapDelete("/users/{userId}", async (int userId, IAuthorizationService service) =>
+app.MapDelete("/user/{id}", async (IAuthorizationService service, int id) =>
 {
-    await service.DeleteUserAsync(userId);
+    await service.DeleteUserAsync(id);
     return Results.NoContent();
 })
 .WithName("DeleteUser")
-.WithSummary("Deletes a user");
+.WithSummary("Deletes a user")
+.WithDescription("Removes the user with the specified ID from the system.");
 
-app.MapDelete("/roles/{roleId}", async (int roleId, IAuthorizationService service) =>
+app.MapDelete("/role/{id}", async (IAuthorizationService service, int id) =>
 {
-    await service.DeleteRoleAsync(roleId);
+    await service.DeleteRoleAsync(id);
     return Results.NoContent();
 })
 .WithName("DeleteRole")
-.WithSummary("Deletes a role");
+.WithSummary("Deletes a role")
+.WithDescription("Removes the role with the specified ID from the system.");
 
-app.MapDelete("/permissions/{permissionId}", async (int permissionId, IAuthorizationService service) =>
+app.MapDelete("/permission/{id}", async (IAuthorizationService service, int id) =>
 {
-    await service.DeletePermissionAsync(permissionId);
+    await service.DeletePermissionAsync(id);
     return Results.NoContent();
 })
 .WithName("DeletePermission")
-.WithSummary("Deletes a permission");
+.WithSummary("Deletes a permission")
+.WithDescription("Removes the permission with the specified ID from the system.");
 
-app.MapPost("/users/{userId}/roles/{roleId}/assign", async (int userId, int roleId, DateTime? effectiveFrom, DateTime? effectiveThrough, IAuthorizationService service) =>
-{
-    await service.AssignRoleToUserAsync(userId, roleId, effectiveFrom, effectiveThrough);
-    return Results.Ok();
-})
-.WithName("AssignRoleToUser")
-.WithSummary("Assigns role to a user");
-
-app.MapPost("/roles/{roleId}/permissions/{permissionId}/assign", async (int roleId, int permissionId, IAuthorizationService service) =>
-{
-    await service.AssignPermissionToRoleAsync(roleId, permissionId);
-    return Results.Ok();
-})
-.WithName("AssignPermissionToRole")
-.WithSummary("Assigns a permission to a role");
-
-app.MapPost("/users/{userId}/permissions/{permissionId}/grant", async (int userId, int permissionId, IAuthorizationService service) =>
-{
-    await service.GrantPermissionToUserAsync(userId, permissionId);
-    return Results.Ok();
-})
-.WithName("GrantPermissionToUser")
-.WithSummary("Assigns a permission to a user");
-
-app.MapPost("/users/{userId}/permissions/{permissionId}/deny", async (int userId, int permissionId, IAuthorizationService service) =>
-{
-    await service.DenyPermissionToUserAsync(userId, permissionId);
-    return Results.Ok();
-})
-.WithName("DenyPermissionToUser")
-.WithSummary("Deny's a permission to a user");
-
-app.MapDelete("/users/{userId}/permissions/{permissionId}/delete", async (int userId, int permissionId, IAuthorizationService service) =>
-{
-    await service.RemoveUserPermissionOverrideAsync(userId, permissionId);
-    return Results.Ok();
-})
-.WithName("DeleteExistingPermissionToUser")
-.WithSummary("Deletes an existing permission to a user");
 
 app.Run();

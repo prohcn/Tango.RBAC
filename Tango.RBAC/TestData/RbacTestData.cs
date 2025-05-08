@@ -1,6 +1,6 @@
-﻿using Tango.RBAC.RbacServicePackage.Models;
+﻿using Microsoft.EntityFrameworkCore;
 using Tango.RBAC.RbacServicePackage.Data;
-using Microsoft.EntityFrameworkCore;
+using Tango.RBAC.RbacServicePackage.Models;
 
 namespace Tango.RBAC.TestData
 {
@@ -8,113 +8,63 @@ namespace Tango.RBAC.TestData
     {
         public static async Task SeedTestDataAsync(RbacDbContext db)
         {
-            if (await db.Users.AnyAsync() || await db.Roles.AnyAsync() || await db.Permissions.AnyAsync())
-                return; // Seed only if DB is empty
+            // Skip seeding if data already exists
+            if (await db.Users.AnyAsync()) return;
 
-            // Users
-            var user1 = new User
-            {
-                OID = "OID123",
-                Email = "alice@example.com",
-                FirstName = "Alice",
-                IsActive = true,
-                DateCreated = DateTime.UtcNow
-            };
+            // Clear existing data
+            db.Users.RemoveRange(db.Users);
+            db.Roles.RemoveRange(db.Roles);
+            db.Permissions.RemoveRange(db.Permissions);
+            db.AreaTypes.RemoveRange(db.AreaTypes);
+            db.PermissionTypes.RemoveRange(db.PermissionTypes);
+            await db.SaveChangesAsync();
 
-            var user2 = new User
-            {
-                OID = "OID456",
-                Email = "bob@example.com",
-                FirstName = "Bob",
-                IsActive = true,
-                DateCreated = DateTime.UtcNow
-            };
+            // Seed AreaTypes
+            var area1 = new AreaType { AreaTypeName = "ODAG", DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" };
+            var area2 = new AreaType { AreaTypeName = "Documents", DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" };
 
-            var user3 = new User
-            {
-                OID = "OID789",
-                Email = "chris@example.com",
-                FirstName = "Chris",
-                IsActive = true,
-                DateCreated = DateTime.UtcNow
-            };
+            db.AreaTypes.AddRange(area1, area2);
 
-            db.Users.AddRange(user1, user2, user3);
-            await db.SaveChangesAsync(); // Save users first to get their IDs
+            // Seed PermissionTypes
+            var perm1 = new PermissionType { PermissionTypeName = "Read", DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" };
+            var perm2 = new PermissionType {    PermissionTypeName = "Write", DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" };
 
-            // Roles
-            var adminRole = new Role
-            {
-                RoleName = "Admin",
-                RoleDescription = "Administrator",
-                DateCreated = DateTime.UtcNow
-            };
+            db.PermissionTypes.AddRange(perm1, perm2);
 
-            var viewerRole = new Role
-            {
-                RoleName = "Viewer",
-                RoleDescription = "Can view data",
-                DateCreated = DateTime.UtcNow
-            };
+            await db.SaveChangesAsync();
 
-            db.Roles.AddRange(adminRole, viewerRole);
-            await db.SaveChangesAsync(); // Save roles
+            // Seed Permissions
+            var permission1 = new Permission { AreaTypeId = area1.AreaTypeId, PermissionTypeId = perm1.PermissionTypeId, Instance = "ODAG_read", DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" };
+            var permission2 = new Permission { AreaTypeId = area1.AreaTypeId, PermissionTypeId = perm2.PermissionTypeId, Instance = "ODAG_write", DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" };
+            var permission3 = new Permission { AreaTypeId = area2.AreaTypeId, PermissionTypeId = perm1.PermissionTypeId, Instance = "Documents_read", DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" };
 
-            // Permissions
-            var permRead = new Permission
-            {
-                Area = "Referrals",
-                Name = "Read",
-                Description = "Read access to referrals",
-                DateCreated = DateTime.UtcNow
-            };
+            db.Permissions.AddRange(permission1, permission2, permission3);
 
-            var permWrite = new Permission
-            {
-                Area = "Referrals",
-                Name = "Write",
-                Description = "Write access to referrals",
-                DateCreated = DateTime.UtcNow
-            };
+            // Seed Roles
+            var role1 = new Role { RoleName = "ODAG_Admin" };
+            var role2 = new Role { RoleName = "Document_Read" };
 
-            db.Permissions.AddRange(permRead, permWrite);
-            await db.SaveChangesAsync(); // Save permissions
+            db.Roles.AddRange(role1, role2);
 
-            // RoleAssignments
+            // Seed Users
+            var user1 = new User { FirstName = "Alice", LastName = "Smith", Email = "Alice.Smith@test.com", DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com"};
+            var user2 = new User { FirstName = "Bob", LastName = "Jones", Email = "Bob.Jones@test.com", DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" };
+
+            db.Users.AddRange(user1, user2);
+
+            await db.SaveChangesAsync();
+
+            // Assign Roles to Users
             db.UserRoles.AddRange(
-                new UserRole
-                {
-                    UserId = user1.UserId,
-                    RoleId = adminRole.RoleId,
-                    DateCreated = DateTime.UtcNow
-                },
-                new UserRole
-                {
-                    UserId = user2.UserId,
-                    RoleId = viewerRole.RoleId,
-                    DateCreated = DateTime.UtcNow
-                }
+                new UserRole { UserId = user1.UserId, RoleId = role1.RoleId, DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" },
+                new UserRole { UserId = user2.UserId, RoleId = role2.RoleId, DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" }
             );
 
+            // Assign Permissions to Roles
             db.RolePermissions.AddRange(
-                new RolePermission
-                {
-                    RoleId = adminRole.RoleId,
-                    PermissionId = permRead.PermissionId,
-                    DateCreated = DateTime.UtcNow
-                },
-                new RolePermission
-                {
-                    RoleId = adminRole.RoleId,
-                    PermissionId = permWrite.PermissionId,
-                    DateCreated = DateTime.UtcNow
-                },
-                new RolePermission
-                {
-                    RoleId = viewerRole.RoleId,
-                    PermissionId = permRead.PermissionId,
-                    DateCreated = DateTime.UtcNow
-                }
+                new RolePermission { RoleId = role1.RoleId, PermissionId = permission1.PermissionId, DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" },
+                new RolePermission { RoleId = role1.RoleId, PermissionId = permission2.PermissionId, DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" },
+                new RolePermission { RoleId = role2.RoleId, PermissionId = permission3.PermissionId, DateCreated = DateTime.UtcNow, UserCreated = "bmorandi@tangocare.com" }
             );
 
             await db.SaveChangesAsync();

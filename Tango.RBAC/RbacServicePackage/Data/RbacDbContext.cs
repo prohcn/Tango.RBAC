@@ -17,6 +17,7 @@ namespace Tango.RBAC.RbacServicePackage.Data
         public DbSet<Permission> Permissions => Set<Permission>();
         public DbSet<UserRole> UserRoles => Set<UserRole>();
         public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
-        public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
+        public DbSet<AreaType> AreaTypes => Set<AreaType>();
+        public DbSet<PermissionType> PermissionTypes => Set<PermissionType>();
     }
 }
