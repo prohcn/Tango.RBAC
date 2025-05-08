@@ -71,21 +71,6 @@ https://localhost:{port}/swagger
 
 ---
 
-## 🔐 Core API Endpoints
-
-The following endpoints are available via `IAuthorizationService` in `RbacDemoApp`:
-
-- `POST /users` — Add a user
-- `PUT /users` — Update a user
-- `DELETE /users/{id}` — Delete a user
-- `GET /permissions/check` — Check permission for a user
-- `POST /roles` — Add a role
-- `POST /permissions` — Add a permission
-- `POST /assign/role` — Assign role to user
-- `POST /assign/permission` — Assign permission to role
-- `POST /grant` — Grant permission directly to a user
-- `POST /deny` — Deny permission directly to a user
-
 > 📝 Full Swagger documentation is available at `/swagger`.
 
 ---
