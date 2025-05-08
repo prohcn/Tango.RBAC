@@ -50,6 +50,11 @@ Update the connection string in `appsettings.Development.json` of `RbacDemoApp`:
 
 Run EF Core migrations (or ensure your database matches the schema in the source).
 
+If you are in top level Tango.RBAC directory, then run the command
+```bash
+dotnet ef database update --project Tango.RBAC/Tango.RBAC.csproj --startup-project RbacDemoApp/RbacDemoApp.csproj
+```
+
 ---
 
 ### 3. Run the Demo App
