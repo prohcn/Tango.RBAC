@@ -50,6 +50,11 @@ Update the connection string in `appsettings.Development.json` of `RbacDemoApp`:
 
 Run EF Core migrations (or ensure your database matches the schema in the source).
 
+If you are in top level Tango.RBAC directory, then run the command
+```bash
+dotnet ef database update --project Tango.RBAC/Tango.RBAC.csproj --startup-project RbacDemoApp/RbacDemoApp.csproj
+```
+
 ---
 
 ### 3. Run the Demo App
@@ -65,21 +70,6 @@ https://localhost:{port}/swagger
 ```
 
 ---
-
-## 🔐 Core API Endpoints
-
-The following endpoints are available via `IAuthorizationService` in `RbacDemoApp`:
-
-- `POST /users` — Add a user
-- `PUT /users` — Update a user
-- `DELETE /users/{id}` — Delete a user
-- `GET /permissions/check` — Check permission for a user
-- `POST /roles` — Add a role
-- `POST /permissions` — Add a permission
-- `POST /assign/role` — Assign role to user
-- `POST /assign/permission` — Assign permission to role
-- `POST /grant` — Grant permission directly to a user
-- `POST /deny` — Deny permission directly to a user
 
 > 📝 Full Swagger documentation is available at `/swagger`.
 
