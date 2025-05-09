@@ -1,24 +1,23 @@
 
 # Tango.RBAC
 
-**Tango.RBAC** is a modular, extensible Role-Based Access Control (RBAC) system built for .NET 8. It supports user/role/permission relationships with overrides, effective dates, and auditing.
+Tango.RBAC is a reusable, generic Role-Based Access Control (RBAC) system for .NET applications. It supports assigning roles to users, associating permissions to roles, and checking access control using a clean, extensible structure.
 
 ---
 
-## 🚀 Features
+## 📁 Project Structure
 
-- User/Role/Permission data model
-- Supports:
-  - Role-to-user assignments
-  - Permission-to-role assignments
-  - Direct user permission overrides (GRANT/DENY)
-- EffectiveFrom / EffectiveThrough time spans
-- Soft-deletes (`IsActive`, `IsRetired`)
-- Audit support
-- Includes seeding and testing endpoints
-- Swagger UI enabled for API interaction
-
----
+```
+Tango.RBAC/
+├── Tango.RBAC/              # Core RBAC library (NuGet package target)
+│   ├── Models/              # EF Core models like User, Role, Permission, etc.
+│   ├── Data/                # RbacDbContext and migrations
+│   ├── Services/            # AuthorizationService implementation
+│   └── Tango.RBAC.csproj    # Project file for packaging
+├── RbacDemoApp/             # ASP.NET Core demo app
+│   └── Program.cs           # Minimal API for testing
+├── Tango.RBAC.sln           # Solution file
+```
 
 ## 📦 Projects
 
@@ -48,33 +47,69 @@ Update the connection string in `appsettings.Development.json` of `RbacDemoApp`:
 }
 ```
 
-Run EF Core migrations (or ensure your database matches the schema in the source).
+---
+
+## ⚙️ EF Core Commands
+
+To run Entity Framework Core commands from the root directory:
 
 If you are in top level Tango.RBAC directory, then run the command
 ```bash
 dotnet ef database update --project Tango.RBAC/Tango.RBAC.csproj --startup-project RbacDemoApp/RbacDemoApp.csproj
 ```
 
----
-
-### 3. Run the Demo App
+###(Optionally) Add a migration:
 
 ```bash
-dotnet run --project RbacDemoApp
+dotnet ef migrations add MigrationName \
+  --project Tango.RBAC \
+  --startup-project RbacDemoApp
 ```
 
-Then visit:
+### Update the database:
 
+```bash
+dotnet ef database update \
+  --project Tango.RBAC \
+  --startup-project RbacDemoApp
 ```
-https://localhost:{port}/swagger
+
+> Note: `Tango.RBAC` must be an SDK-style project and reference Microsoft.EntityFrameworkCore.Design.
+
+---
+
+## 📦 Create NuGet Package
+
+### 1. Pack the library:
+
+```bash
+dotnet pack Tango.RBAC/Tango.RBAC.csproj -c Release
+```
+
+### 2. Push to NuGet:
+
+```bash
+dotnet nuget push bin/Release/Tango.RBAC.*.nupkg \
+  --api-key YOUR_API_KEY \
+  --source https://api.nuget.org/v3/index.json
 ```
 
 ---
 
-> 📝 Full Swagger documentation is available at `/swagger`.
+## 🚀 Usage
+
+1. Reference the `Tango.RBAC` package in your project.
+2. Add the `RbacDbContext` to your DI container.
+3. Use the `IAuthorizationService` to check permissions:
+
+```csharp
+var hasAccess = await authorizationService.HasPermissionAsync(userId, areaTypeId, permissionTypeId);
+```
 
 ---
 
-## 🧪 Seeding Test Data
+## 🧪 Test Data
 
-Modify or call the `RbacTestData.SeedTestDataAsync(RbacDbContext)` method in `Program.cs` of `RbacDemoApp` to add test users, roles, and permissions.
+A static seeder `RbacTestData.SeedTestDataAsync()` is available to populate your database with initial test data for demo/testing purposes.
+
+---
